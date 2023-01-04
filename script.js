@@ -153,9 +153,9 @@ class enemy extends charactor{
     collision() {
         if (this.m != 0) this.breaking();
         if (beams[0].getX >= this.x
-            && beams[0].getX <= this.x + 8 * p
+            && beams[0].getX <= this.x + this.shape[this.m][0].length * p
             && beams[0].getY >= this.y 
-            && beams[0].getY <= this.y + this.shape[0].length * p) {
+            && beams[0].getY <= this.y + this.shape[this.m].length * p) {
             this.breaking();
             count++;
             score += this.point;
@@ -163,8 +163,11 @@ class enemy extends charactor{
         }
     }
     breaking() {
-        if(this.m < 4){
+        if(this.m < 3){
             this.m ++;
+        }else{
+            this.m = 4;
+            enemies[this.index] = 0;
         }
     }
     move(){
@@ -229,9 +232,9 @@ class UFO extends charactor {
         if(this.m >= 4) this.showPoint();
         if(this.m != 0) this.breaking();
         if (beams[0].getX >= this.x
-            &&beams[0].getX <= this.x + 8 * p
+            &&beams[0].getX <= this.x + this.shape[this.m][0] * p
             && beams[0].getY >= this.y
-            && beams[0].getY <= this.y + this.shape[0].length * p) {
+            && beams[0].getY <= this.y + this.shape[this.m].length * p) {
             this.breaking();
             beams[0] = 0;
             score += this.point;
