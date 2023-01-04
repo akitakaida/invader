@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Invader</title>
+</head>
+<body>
+    <div class="gameArea">
+        <!--スコア表示欄-->
+        <div id="score-wrapper">
+            <p>Score : <span id="score">0</span></p>
+            <p>Hi Score : <span id="hi-score">0</span></p>
+        </div>
+        <!--線画領域-->
+        <div id = "canvas-wrapper">
+            <canvas id="canvas">
+                canvasをサポートしていません
+            </canvas>
+            <canvas id="canvas2"></canvas>
+        </div>
+        <!--ボタン操作-->
+        <div id="btn-wrapper">
+            <div class="container">
+                <input type="button" class="btn" value="p：Pause" onclick="pause()">
+            </div>
+            <div class="container">
+                <input type="button" class="btn" value="←" onclick="fort1.move(p * -1)">
+                <input type="button" class="btn" value="→" onclick="fort1.move(p)">
+            </div>
+            <div class="container">
+                <input type="button" class="btn" id="space" value="SPACE:発射" onclick="fort1.fire()">
+            </div>
+        </div>
+    </div>
+    <!--スタート用のWrapper-->
+    <div class="start-wrapper" id="start-wrap">
+        <div class="container">
+            <input type="button" class="btn" id="start" value="Start" onclick="start()">
+            <div id="showscore"></div>
+        </div>
+    </div>
+    <!--Pause時のWrapper-->
+    <div class="pause-wrapper" id="pause-wrap">
+        <div class="container">
+            <p>Pause</p>
+            <input type="button" class="btn" id="pause" value="ReStart" onclick="pause()">
+        </div>
+    </div>
+    <!--自機撃破時のWrapper-->
+    <div class="continue-wrapper" id="continue-wrap">
+        <div class="contianer">
+            <input type="button" class="btn" id="continue" value="Continue?" onclick="cont()">
+        </div>
+    </div>
+    <!--CLEAR時のWrapper-->
+    <div class="clear-wrapper" id="clear-wrap">
+        <div class="contianer">
+            <p>CLEAR</p>
+            <p>Next Wave</p>
+            <p id="cnt"></p>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
