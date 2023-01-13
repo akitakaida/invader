@@ -3,20 +3,25 @@ canvas.style.border = "2px solid #999";
 canvas.width = 512;
 canvas.height = 512;
 const ctxt = canvas.getContext("2d");
+//画面の最小単位p
 const p = 4;
 const fieldX = canvas.width;
 const fieldY = canvas.height;
+//残機の表示領域
 const canvas2 = document.getElementById("canvas2");
 canvas2.width = fieldX;
 canvas2.height = 6 * p;
 const ctxt2 = canvas2.getContext("2d");
 
 class charactor{
-    constructor(x, y){
+    constructor(x, y, i){
         this.x = x;
         this.y = y;
         this.m = 0;
+        this.index = i;
+        this.col = false;
         this.shape = [[]];
+        this.point = 0;
     }
     get getX(){
         return this.x;
@@ -27,6 +32,7 @@ class charactor{
     get getMode(){
         return this.m;
     }
+    //キャラクターの描画
     write(){
         for (let i = 0; i < this.shape[this.m].length; i++) {
             for (let j = 0; j < this.shape[this.m][i].length; j++) {
@@ -37,12 +43,51 @@ class charactor{
             }
         }
     }
+    //ビームの当たり判定
+    collision(){
+        if (this.col){
+            this.breaking();
+            return;
+        } 
+        let ii = 0;
+        let j = 1;
+        if(this.index === 0){
+            //自機のとき
+            ii = 1;
+            j = beams.length;
+        }
+        for (let i = ii; i < j; i++) {
+            if (beams[i] === 0) continue;
+            if (beams[i].getX <= this.x + this.shape[0][0].length * p
+                && beams[i].getX >= this.x
+                && beams[i].getY >= this.y
+                && beams[i].getY <= this.y + this.shape[0].length * p) {
+                this.col = true;
+                beams[i] = 0;
+                score += this.point;
+                this.breaking();
+            }
+        }
+    }
+    //壊れるときの処理
+    breaking(){
+        if(this.m < this.shape.length) {
+            this.m++;
+        }
+    }
+    fire(){
+        let k = 1;
+        if(this.index === 0) k = 0;
+        if (beams[this.index] === 0) beams[this.index] = new beam(this.x + this.shape[0][0].length / 2 * p, this.y, k, this.index);
+    }
     
 }
 //自機（砲台）
 class fort extends charactor {
-    constructor(x, y) {
-        super(x, y);
+    constructor(x, y, i) {
+        super(x, y, i);
+        this.point = -100;
+        //6x6で形を規定
         this.shape = [
             //通常時
             [[0, 0, 1, 1, 0, 0],
@@ -64,50 +109,25 @@ class fort extends charactor {
             [1, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1, 1]],
-            [[0]]
+            [1, 1, 1, 1, 1, 1]]
         ]
+    }
+    collision(){
+        super.collision();
+        if (this.col && this.m === this.shape.length) {
+            charactors[this.index] = 0;
+        }
     }
     move(x) {
         if (this.x + x < 0 || this.x + x + 3 * p > fieldX) return;
         this.x += x;
     }
-    fire() {
-        if (fortbeam) return;
-        beams[0] = new beam(this.x + 3 * p, this.y, 0, 0);
-        fortbeam = true;
-    }
-    collision() {
-        if (this.m != 0) this.breaking();
-        for(let i = 1; i < beams.length; i++){
-            if(beams[i] === 0) continue;
-            if (beams[i].getX <= this.x + this.shape[0][0].length * p
-                && beams[i].getX >= this.x
-                && beams[i].getY >= this.y
-                && beams[i].getY <= this.y + this.shape[0].length * p) {
-                this.breaking();
-                beams[i] = 0;
-                score -= 100;
-                }
-        }
-    }
-    breaking() {
-        if (this.m < 3) {
-            this.m++;
-        } else {
-            this.m = 3;
-            this.write();
-            GAMEMODE = GAMEOVER();
-        }
-    }
-
 }
 //敵（Invader）
 class enemy extends charactor{
     constructor(x, y, i){
-        super(x, y);
-        this.index = i;
-        switch(this.index % 5){
+        super(x, y, i);
+        switch((this.index - 1) % 5){
             case 0:
                 this.point = 40;
                 break;
@@ -117,7 +137,9 @@ class enemy extends charactor{
                 break;
             default:
                 this.point = 10;
+                break;
         }
+        //6x8
         this.shape = [
             //通常時
             [[0, 0, 1, 0, 0, 1, 0, 0],
@@ -146,28 +168,14 @@ class enemy extends charactor{
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
-            [1, 0, 0, 0, 0, 0, 0, 1]],
-            [[0]]
+            [1, 0, 0, 0, 0, 0, 0, 1]]
         ];
     }
     collision() {
-        if (this.m != 0) this.breaking();
-        if (beams[0].getX >= this.x
-            && beams[0].getX <= this.x + this.shape[this.m][0].length * p
-            && beams[0].getY >= this.y 
-            && beams[0].getY <= this.y + this.shape[this.m].length * p) {
-            this.breaking();
+        super.collision();
+        if(this.col && this.m === this.shape.length) {
             count++;
-            score += this.point;
-            beams[0] = 0;
-        }
-    }
-    breaking() {
-        if(this.m < 3){
-            this.m ++;
-        }else{
-            this.m = 4;
-            enemies[this.index] = 0;
+            charactors[this.index] = 0;
         }
     }
     move(){
@@ -184,16 +192,13 @@ class enemy extends charactor{
                 break;
         }
     }
-    fire(){
-        if (beams[this.index + 1] === 0) beams[this.index + 1] = new beam(this.x, this.y + this.shape[0].length, 1, this.index + 1);
-    }
 }
 class UFO extends charactor {
     constructor(x, y, i) {
-        super(x, y);
+        super(x, y, i);
         //index = 1 は左から登場、-1は右から登場
-        this.index = i;
         this.point = getRundom(1, 10) * 50;
+        //6x8
         this.shape = [
             //通常時
             [[0, 0, 0, 0, 0, 0, 0, 0],
@@ -223,45 +228,47 @@ class UFO extends charactor {
             [0, 0, 0, 0, 0, 0, 0, 0],
             [1, 0, 0, 0, 0, 0, 0, 1],
             [1, 1, 0, 0, 0, 0, 1, 1]],
-            //登場していないとき
             [[0]]
         ]
 
     }
     collision() {
-        if(this.m >= 4) this.showPoint();
-        if(this.m != 0) this.breaking();
-        if (beams[0].getX >= this.x
-            &&beams[0].getX <= this.x + this.shape[this.m][0] * p
-            && beams[0].getY >= this.y
-            && beams[0].getY <= this.y + this.shape[this.m].length * p) {
+        if(this.m >= 3) this.showPoint();
+        if (this.col) {
             this.breaking();
+            return;
+        }
+        if (beams[0] === 0) return;
+        if (beams[0].getX <= this.x + this.shape[0][0].length * p
+            && beams[0].getX >= this.x
+            && beams[0].getY >= this.y
+            && beams[0].getY <= this.y + this.shape[0].length * p) {
+            this.col = true;
             beams[0] = 0;
             score += this.point;
+            this.breaking();
             UFOflame = f;
         }
     }
     move(){
-        if(this.m >= 4) return;
+        if(this.col) return;
         this.x += p * this.index;
-        if(this.x <= 0 || this.x >= fieldX) this.m = 4;
+        if(this.x <= 0 || this.x >= fieldX) this.m = 3;
     };
-    breaking() {
-        if (this.m < 4) {
-            this.m++;
-        }
-    }
     showPoint(){
         if(f <= UFOflame + 20) ctxt.fillText(this.point, this.x + 4 * p, this.y + 4 * p);
         if(f > UFOflame + 20) this.y = -20 * p;
+
     }
 }
 //トーチカ
-class sheild extends charactor{
+class sheild{
     constructor(x, y) {
-        super(x, y);
+        this.x = x;
+        this.y = y;
+        //12x12
         this.shape = [
-            [[0 , 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
+            [0 , 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
             [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0],
             [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
             [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
@@ -272,40 +279,50 @@ class sheild extends charactor{
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1],
-            [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1]]          
+            [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1]        
         ]
+    }
+    write() {
+        for (let i = 0; i < this.shape.length; i++) {
+            for (let j = 0; j < this.shape[i].length; j++) {
+                if (this.shape[i][j] === 1) {
+                    ctxt.fillRect(this.x + p * j, this.y + p * i, p, p);
+                    ctxt.fillStyle = "#fff"
+                }
+            }
+        }
     }
     collision() {
         //ビームにあたったとき
         for (let i = 0; i < beams.length; i++) {
             if (beams[i] === 0) continue;
-            if (beams[i].getX <= this.x + this.shape[0][0].length * p
+            if (beams[i].getX <= this.x + this.shape[0].length * p
                 && beams[i].getX >= this.x
                 && beams[i].getY >= this.y
-                && beams[i].getY <= this.y + this.shape[0].length * p){
+                && beams[i].getY <= this.y + this.shape.length * p){
                 let x = Math.floor(Math.abs(beams[i].getX - this.x) / p);
                 let y = Math.floor(Math.abs(beams[i].getY - this.y) / p);
                 if(x > 11) x = 11;
                 if(y > 11) y = 11;
-                if (this.shape[0][y][x] === 1){
-                    this.shape[0][y][x] = 0;
+                if (this.shape[y][x] === 1){
+                    this.shape[y][x] = 0;
                     beams[i] = 0;
                 } 
             }
         }
         //invaderにあたったとき
-        for (let i = 0; i < enemies.length; i++) {
-            if (enemies[i] === 0) continue;
-            if (enemies[i].getX <= this.x + this.shape[0][0].length * p
-                && enemies[i].getX >= this.x
-                && enemies[i].getY + 6 * p >= this.y
-                && enemies[i].getY + 6 * p <= this.y + this.shape[0].length * p){
-                let x = Math.floor(Math.abs(enemies[i].getX + 3 * p - this.x) / p);
-                let y = Math.floor(Math.abs(enemies[i].getY + 6 * p - this.y) / p);
+        for (let i = 1; i < charactors.length; i++) {
+            if (charactors[i] === 0) continue;
+            if (charactors[i].getX <= this.x + this.shape[0].length * p
+                && charactors[i].getX >= this.x
+                && charactors[i].getY + 6 * p >= this.y
+                && charactors[i].getY + 6 * p <= this.y + this.shape.length * p){
+                let x = Math.floor(Math.abs(charactors[i].getX + 3 * p - this.x) / p);
+                let y = Math.floor(Math.abs(charactors[i].getY + 6 * p - this.y) / p);
                 if(x > 11) x = 11;
                 if(y > 11) y = 11;
-                if (this.shape[0][y][x] === 1){
-                    this.shape[0][y][x] = 0;
+                if (this.shape[y][x] === 1){
+                    this.shape[y][x] = 0;
                 } 
             }
         }
@@ -318,7 +335,6 @@ class beam{
         this.x = x;
         this.y = y;
         this.mode = mode;
-        this.move();
         this.index = i;
     }
     get getX(){
@@ -347,8 +363,6 @@ class beam{
                     break;
             }
             this.writeBeam();
-        }else if(this.mode === 0){
-            fortbeam = false;
         }else{
             beams[this.index] = 0;
         }
@@ -372,7 +386,7 @@ function writeScore() {
 }
 
 //Invaderがどの向きに動くか判定
-function enemiesMoveCheck(){
+function charactorsMoveCheck(){
     if (d === "ldown") {
         d = "right";
         return;
@@ -381,7 +395,7 @@ function enemiesMoveCheck(){
         d = "left";
         return;
     } 
-    enemies.forEach((e)=>{
+    charactors.forEach((e)=>{
         if(e.getX + 7 * p >= fieldX){
             d = "rdown";
         }
@@ -402,9 +416,9 @@ function createUFO(){
     }
 }
 //どのInvaderがビームを打つか
-function enemiesFireCheck() {
-    let fire = getRundom(0, enemies.length * 2);
-    if (fire < enemies.length && enemies[fire] != 0) enemies[fire].fire();
+function charactorsFireCheck() {
+    let fire = getRundom(0, charactors.length * 2);
+    if (fire < charactors.length && charactors[fire] != 0 && fire > 0) charactors[fire].fire();
 }
 //キーボード入力の規定
 document.addEventListener('keydown', keydown_ivent);
@@ -413,10 +427,10 @@ function keydown_ivent(e) {
     if(GAMEMODE != 1 ) return;
     switch (e.key) {
         case 'ArrowLeft':
-            fort1.move(p * -1);
+            charactors[0].move(p * -1);
             break;
         case 'ArrowRight':
-            fort1.move(p);
+            charactors[0].move(p);
             break;
         default:
             break;
@@ -427,7 +441,7 @@ function keypress_ivent(e){
     switch (e.key) {
         case ' ':
             if (GAMEMODE != 1) return;
-            fort1.fire();
+            charactors[0].fire();
             break;
         case "p":
             pause();
@@ -465,34 +479,36 @@ function cont(){
     let contWrap = document.getElementById("continue-wrap");
     if(GAMEMODE === 3){
         life--;
-        GAMEMODE = 9;
         for(let i = 0; i < beams.length; i++){
             beams[i] = 0;
         }
         contWrap.style.display = "inline";
+        GAMEMODE = 9;
     }else{
-        GAMEMODE = 1
         contWrap.style.display = "none";
-        fort1 = new fort(fieldX/2, fieldY - 6 * p);
+        charactors[0] = new fort(fieldX/2, fieldY - 6 * p, 0);
+        GAMEMODE = 1;
     }
 }
 //GAMEOVERの判定
 function GAMEOVER(){
-    if(life <= 0) {
-        return 4;
-    }
-    enemies.forEach((e)=>{
+    charactors.forEach((e)=>{
         if(e != 0){
             if(e.getY + 6 * p >= fieldY - p * 10){
                 return 4;
             }
         }
     });
-    return 3;
+    if(charactors[0] === 0) {
+        if(life <= 0) return 4;
+        writeAll(); 
+        return 3;
+    }
+    return 1;
 }
 //残機の表示
 function writeLife(){
-    ctxt2.clearRect(0,0, fieldX, 6 * p);
+    ctxt2.clearRect(0, 0, fieldX, 6 * p);
     for(let l = 0; l < life; l++){
         ctxt2.fillRect(l * 7 * p + 2 * p, 0, 2 * p, 2 * p);
         ctxt2.fillRect(l * 7 * p, 2 * p, 6 * p, 4 * p);
@@ -511,47 +527,45 @@ function writeAll(){
     beams.forEach((e) => {
         if (e != 0) e.move();
     });
-    if (beams[0] === 0) fortbeam = false;
-    enemies.forEach((e) => {
+    charactors.forEach((e, i) => {
         if (e != 0) {
             e.write();
             e.collision();
-            if (f % (enemies.length - count) === 0) e.move();
+            if (f % (charactors.length - 1 - count) === 0 && i != 0) e.move();
         };
     });
     UFO1.write();
     UFO1.collision();
-    fort1.write();
-    fort1.collision();
     sheilds.forEach((e) => {
         e.write();
         e.collision();
     });
 }
 //各変数の設定
-let enemies = new Array(50);
+let charactors = new Array(51);
 let UFO1 = new UFO(fieldX, 0, 1);
 let beams = new Array(51);
-let fort1;
 let sheilds = new Array(4)
-let life, fortbeam, UFOflame, d, score, hiScore, f = 0, count;
+let life, UFOflame, d, score, hiScore, f = 0, count;
 let GAMEMODE = 0;
 
 //メインループ
 function main() {
-    if (f >= 100000000) f = 0;
+    if (f >= 100000000) {
+        f = 0;
+        UFOflame = 0;
+    }
     switch(GAMEMODE){
         case 0:
             //スタート時用のGAMEMODE
+            charactors[0] = new fort(fieldX / 2, fieldY - 6 * p, 0);
             beams[0] = 0;
             for (let i = 0; i < 10; i++) {
                 for (let j = 0; j < 5; j++) {
-                    enemies[i * 5 + j] = new enemy(4 * p + 12 * i * p, (10 + j * 6) * p, i * 5 + j);
+                    charactors[i * 5 + j + 1] = new enemy(4 * p + 12 * i * p, (10 + j * 6) * p, i * 5 + j  + 1);
                     beams[i * 5 + j + 1] = 0;
                 }
             }
-            fort1 = new fort(fieldX / 2, fieldY - 6 * p);
-            fortbeam = false;
             UFOflame = 0;
             d = "right";
             hiScore = 0;
@@ -563,14 +577,15 @@ function main() {
             //ゲーム中のGAMEMODE
             f++;
             writeAll();
-            if (f % (enemies.length - count) === 0) {
-                enemiesMoveCheck();
-                enemiesFireCheck();
+            if (f % (charactors.length - 1 - count) === 0) {
+                charactorsMoveCheck();
+                charactorsFireCheck();
             }
             if( f % (getRundom(1,5) * 4000) === 0) createUFO();
             if( f % 5 === 0) UFO1.move();
             writeScore();
-            if(count >= enemies.length) GAMEMODE = 5;
+            GAMEMODE = GAMEOVER();
+            if(count >= charactors.length - 1) GAMEMODE = 5;
             break;
         case 3:
             //自機が撃破されたときのGAMEMODE
@@ -578,6 +593,8 @@ function main() {
             break;
         case 4:
             //GAMEOVER
+            charactors[0] = 0;
+            writeAll();
             if(hiScore < score) hiScore = score;
             let startWrap = document.getElementById("start-wrap");
             startWrap.style.display = "inline";
@@ -611,6 +628,5 @@ function main() {
             break;
     }
     writeLife();
-    GAMEOVER();
     requestAnimationFrame(main);
 }
